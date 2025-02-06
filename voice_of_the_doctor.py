@@ -94,4 +94,4 @@ def text_to_speech_with_elevenlabs(input_text, output_filepath):
         
         
 input_text_eleven="Hi this is Ai with Arsalan, eleven_labs testing!"
-text_to_speech_with_elevenlabs(input_text_eleven, output_filepath="elevenlabs_testing_autoplay.mp3")
+# text_to_speech_with_elevenlabs(input_text_eleven, output_filepath="elevenlabs_testing_autoplay.mp3")
