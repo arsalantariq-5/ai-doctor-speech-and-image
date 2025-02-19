@@ -10,6 +10,7 @@ pydub = "*"
 gtts = "*"
 elevenlabs = "*"
 gradio = "*"
+sounddevice = "*"
 
 [dev-packages]
 
