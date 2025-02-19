@@ -1,88 +1,87 @@
-# if you don't use pipenv, uncomment the following:
-# from dotenv import load_dotenv
-# load_dotenv()
-
 import os
 import logging
-import speech_recognition as sr
-from pydub import AudioSegment
-from io import BytesIO
+import sounddevice as sd
+import numpy as np
+import wave
 from groq import Groq
+from pydub import AudioSegment
+from dotenv import load_dotenv
 
-# Set up logging
+# Load environment variables (if not using pipenv)
+load_dotenv()
+
 logging.basicConfig(level=logging.INFO,
-                    format="%(asctime)s - %(levelname)s - %(message)s")
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 
 
-def record_audio(file_path, timeout=20, phrase_time_limit=None):
+def record_audio(file_path, duration=5, samplerate=44100):
     """
-    Records audio from the microphone and saves it as an MP3 file.
+    Records audio using sounddevice and saves it as an MP3 file.
 
     Args:
-    file_path (str): Path to save the recorded audio file.
-    timeout (int): Maximum time to wait for a phrase to start (in seconds).
-    phrase_time_limit (int): Maximum duration of the recorded phrase (in seconds).
+    file_path (str): Path to save the recorded audio.
+    duration (int): Recording duration in seconds.
+    samplerate (int): Sample rate (default: 44100 Hz).
     """
-    recognizer = sr.Recognizer()
-
     try:
-        with sr.Microphone() as source:
-            logging.info("Adjusting for ambient noise...")
-            recognizer.adjust_for_ambient_noise(source, duration=1)
-            logging.info("Start speaking now...")
+        logging.info("Recording started... Speak now!")
+        audio_data = sd.rec(int(duration * samplerate),
+                            samplerate=samplerate, channels=1, dtype=np.int16)
+        sd.wait()  # Wait until recording is finished
+        logging.info("Recording finished.")
 
-            # Record the audio
-            audio_data = recognizer.listen(
-                source, timeout=timeout, phrase_time_limit=phrase_time_limit)
-            logging.info("Recording complete.")
+        # Save as a WAV file
+        wav_file = file_path.replace(".mp3", ".wav")
+        with wave.open(wav_file, "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)  # 16-bit audio
+            wf.setframerate(samplerate)
+            wf.writeframes(audio_data.tobytes())
 
-            # Convert the recorded audio to an MP3 file
-            wav_data = audio_data.get_wav_data()
-            audio_segment = AudioSegment.from_wav(BytesIO(wav_data))
-            audio_segment.export(file_path, format="mp3", bitrate="128k")
-
-            logging.info(f"Audio saved to {file_path}")
+        # Convert WAV to MP3
+        audio_segment = AudioSegment.from_wav(wav_file)
+        audio_segment.export(file_path, format="mp3", bitrate="128k")
+        os.remove(wav_file)  # Remove temporary WAV file
+        logging.info(f"Audio saved to {file_path}")
 
     except Exception as e:
-        logging.error(f"An error occurred while recording: {e}")
+        logging.error(f"An error occurred: {e}")
 
 
-def transcribe_with_groq(GROQ_API_KEY, audio_filepath, stt_model="whisper-large-v3"):
+# Step 2: Setup Speech-to-Text (STT) Model
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+stt_model = "whisper-large-v3"
+
+
+def transcribe_with_groq(stt_model, audio_filepath, GROQ_API_KEY):
     """
-    Transcribes an audio file using Groq's Whisper model.
+    Transcribes an audio file using Groq API.
 
     Args:
-    GROQ_API_KEY (str): API key for authentication.
+    stt_model (str): Model to use for transcription.
     audio_filepath (str): Path to the audio file.
-    stt_model (str): Whisper model name (default: whisper-large-v3).
+    GROQ_API_KEY (str): API key for authentication.
 
     Returns:
     str: Transcribed text.
     """
     try:
         client = Groq(api_key=GROQ_API_KEY)
-
         with open(audio_filepath, "rb") as audio_file:
             transcription = client.audio.transcriptions.create(
                 model=stt_model,
                 file=audio_file,
                 language="en"
             )
-
         return transcription.text
-
     except Exception as e:
-        logging.error(f"An error occurred during transcription: {e}")
-        return None
+        logging.error(f"Error in transcription: {e}")
+        return ""
 
 
-# if __name__ == "__main__":
-#     # Test recording and transcription
-#     GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
-#     audio_filepath = "patient_voice_test_for_patient.mp3"
-
-#     record_audio(file_path=audio_filepath)
-
-#     if os.path.exists(audio_filepath):
-#         transcription = transcribe_with_groq(GROQ_API_KEY, audio_filepath)
-#         logging.info(f"Transcription: {transcription}")
+# Example Usage
+# audio_filepath = "patient_voice_test.mp3"
+# record_audio(audio_filepath, duration=10)  # Record for 10 seconds
+# transcribed_text = transcribe_with_groq(
+#     stt_model, audio_filepath, GROQ_API_KEY)
+# print("Transcription:", transcribed_text)
