@@ -22,52 +22,57 @@ Keep your answer concise (max 2 sentences). No preamble, start your answer right
 st.write("🎤 Record your voice message:")
 audio_data = mic_recorder(start_prompt="Click to Record", key="record")
 
-# Image Upload Section
-image_file = st.file_uploader(
-    "📷 Upload a medical image (optional)", type=["png", "jpg", "jpeg"])
-
-if st.button("🩺 Diagnose"):
-    if audio_data:
-        # Extract audio bytes
-        if isinstance(audio_data, dict) and "bytes" in audio_data:
-            audio_bytes = audio_data["bytes"]
-        else:
-            st.error("Invalid audio data format.")
-            st.stop()
+# ✅ **Show the recorded voice as soon as recording stops**
+if audio_data:
+    if isinstance(audio_data, dict) and "bytes" in audio_data:
+        audio_bytes = audio_data["bytes"]
 
         # Save recorded audio as WAV
         audio_path = "recorded_audio.wav"
         with open(audio_path, "wb") as f:
             f.write(audio_bytes)
 
-        # Transcribe audio
-        st.info("📝 Transcribing speech...")
-        transcribed_text = transcribe_with_groq(
-            GROQ_API_KEY=GROQ_API_KEY, audio_filepath=audio_path, stt_model="whisper-large-v3")
-        st.text_area("🗣 Speech to Text Output", transcribed_text)
-
-        # Analyze Image (if provided)
-        if image_file:
-            image_path = f"temp_image.{image_file.name.split('.')[-1]}"
-            with open(image_path, "wb") as f:
-                f.write(image_file.read())
-
-            encoded_image = encode_image(image_path)
-            doctor_response = analyze_image_with_query(
-                query=system_prompt + transcribed_text,
-                encoded_image=encoded_image,
-                model="llama-3.2-11b-vision-preview"
-            )
-        else:
-            doctor_response = "No image provided for analysis."
-
-        st.text_area("🧑‍⚕️ Doctor's Response", doctor_response)
-
-        # Convert response to speech
-        st.info("🔊 Generating voice response...")
-        audio_output_path = "doctor_response.mp3"
-        text_to_speech_with_elevenlabs(doctor_response, audio_output_path)
-        st.audio(audio_output_path)
+        # 🎧 **Show Recorded Voice in UI immediately**
+        st.audio(audio_path, format="audio/wav")
 
     else:
+        st.error("Invalid audio data format.")
+        st.stop()
+
+# Image Upload Section
+image_file = st.file_uploader(
+    "📷 Upload a medical image (optional)", type=["png", "jpg", "jpeg"])
+
+if st.button("🩺 Diagnose"):
+    if not audio_data:
         st.warning("⚠️ Please record your voice first.")
+        st.stop()
+
+    # Transcribe audio
+    st.info("📝 Transcribing speech...")
+    transcribed_text = transcribe_with_groq(
+        GROQ_API_KEY=GROQ_API_KEY, audio_filepath=audio_path, stt_model="whisper-large-v3")
+    st.text_area("🗣 Speech to Text Output", transcribed_text)
+
+    # Analyze Image (if provided)
+    if image_file:
+        image_path = f"temp_image.{image_file.name.split('.')[-1]}"
+        with open(image_path, "wb") as f:
+            f.write(image_file.read())
+
+        encoded_image = encode_image(image_path)
+        doctor_response = analyze_image_with_query(
+            query=system_prompt + transcribed_text,
+            encoded_image=encoded_image,
+            model="llama-3.2-11b-vision-preview"
+        )
+    else:
+        doctor_response = "No image provided for analysis."
+
+    st.text_area("🧑‍⚕️ Doctor's Response", doctor_response)
+
+    # Convert response to speech
+    st.info("🔊 Generating voice response...")
+    audio_output_path = "doctor_response.mp3"
+    text_to_speech_with_elevenlabs(doctor_response, audio_output_path)
+    st.audio(audio_output_path, format="audio/mp3")
