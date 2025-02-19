@@ -4,15 +4,18 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-groq = "*"
 speechrecognition = "*"
-pydub = "*"
 gtts = "*"
 elevenlabs = "*"
 gradio = "*"
 sounddevice = "*"
 numpy = "*"
 scipy = "*"
+streamlit-audiorec = {git = "https://github.com/stefanrmmr/streamlit_audio_recorder.git"}
+streamlit = "*"
+streamlit-mic-recorder = "*"
+groq = "*"
+pydub = "*"
 
 [dev-packages]
 
