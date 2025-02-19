@@ -11,6 +11,8 @@ gtts = "*"
 elevenlabs = "*"
 gradio = "*"
 sounddevice = "*"
+numpy = "*"
+scipy = "*"
 
 [dev-packages]
 
